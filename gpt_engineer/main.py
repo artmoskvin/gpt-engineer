@@ -5,10 +5,12 @@ from pathlib import Path
 
 import typer
 
+from gpt_engineer.agent import SoftEngAgent
 from gpt_engineer.ai import AI, fallback_model
 from gpt_engineer.collect import collect_learnings
 from gpt_engineer.db import DB, DBs, archive
 from gpt_engineer.learning import collect_consent
+from gpt_engineer.project import Project
 from gpt_engineer.steps import STEPS, Config as StepsConfig
 
 app = typer.Typer()
@@ -62,6 +64,24 @@ def main(
         collect_learnings(model, temperature, steps, dbs)
 
     dbs.logs["token_usage"] = ai.format_token_usage_log()
+
+
+def create_project():
+    """DRAFT"""
+    dbs = DBs()
+    project = Project(dbs)
+    ai = AI()
+    agent = SoftEngAgent(ai)
+    prompt = ""  # user message, test run output
+    tests_pass = False
+    while not tests_pass:
+        spec = agent.create_spec(prompt)  # spec aka plan
+        project = agent.update_project(project, spec)
+        tests_output = project.run_tests()
+        tests_pass = tests_output.status
+        if not tests_pass:
+            prompt = tests_output.logs()
+    return tests_pass
 
 
 if __name__ == "__main__":
